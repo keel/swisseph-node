@@ -1,19 +1,38 @@
 {
   "name": "swisseph-node",
   "version": "1.0.0",
-  "description": "Modern N-API binding for Swiss Ephemeris, compiles upstream sources unmodified",
+  "description": "Modern N-API binding for Swiss Ephemeris — self-contained (vendored C sources), ships prebuilt binaries, bundle-friendly (base64-embedded fallback for serverless/bundler-only runtimes)",
   "main": "index.js",
   "types": "types/index.d.ts",
   "license": "AGPL-3.0",
-  "keywords": ["swiss", "ephemeris", "astrology", "astronomy", "n-api"],
+  "keywords": ["swiss", "ephemeris", "astrology", "astronomy", "n-api", "prebuildify"],
   "engines": { "node": ">=16" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-name/swisseph-node.git"
+  },
+  "files": [
+    "index.js",
+    "lib/",
+    "types/",
+    "src/",
+    "vendor/",
+    "prebuilds/",
+    "binding.gyp",
+    "README.md"
+  ],
   "scripts": {
-    "install": "node-gyp rebuild",
     "build": "node-gyp rebuild",
+    "prebuild": "prebuildify --napi --strip",
+    "gen-b64": "node scripts/gen-b64.js",
+    "prepublishOnly": "npm test",
     "test": "node test/index.js"
   },
   "dependencies": {
     "node-addon-api": "^8.0.0"
+  },
+  "devDependencies": {
+    "prebuildify": "^6.0.1"
   },
   "gypfile": true
 }

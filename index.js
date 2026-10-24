@@ -3,8 +3,11 @@
  *
  * Low level: require('swisseph-node').raw  (faithful C API mapping)
  * High level: computeChart / computeSynastry / computeSky
+ *
+ * The native binary is loaded by lib/raw.js (prebuilds → build → embedded
+ * base64 fallback for bundler-only runtimes).
  */
-const raw = require('./build/Release/swisseph_node.node');
+const raw = require('./lib/raw');
 const chart = require('./lib/chart');
 const sky = require('./lib/sky');
 const { FLG, PLANETS, SIGN_KEYS, SIGN_GLYPHS, ASPECTS, HOUSE_SYSTEMS, BODIES } = require('./lib/constants');

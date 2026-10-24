@@ -1,26 +1,21 @@
 {
-  "variables": {
-    # Path to the pristine Swiss Ephemeris C sources.
-    # Override with: npm install --sse_dir=/path/to/swisseph-master
-    "sse_dir%": "../swisseph-master"
-  },
   "targets": [
     {
       "target_name": "swisseph_node",
       "sources": [
-        "<(sse_dir)/sweph.c",
-        "<(sse_dir)/swedate.c",
-        "<(sse_dir)/swehouse.c",
-        "<(sse_dir)/swejpl.c",
-        "<(sse_dir)/swemmoon.c",
-        "<(sse_dir)/swemplan.c",
-        "<(sse_dir)/swecl.c",
-        "<(sse_dir)/swehel.c",
-        "<(sse_dir)/swephlib.c",
+        "vendor/sweph.c",
+        "vendor/swedate.c",
+        "vendor/swehouse.c",
+        "vendor/swejpl.c",
+        "vendor/swemmoon.c",
+        "vendor/swemplan.c",
+        "vendor/swecl.c",
+        "vendor/swehel.c",
+        "vendor/swephlib.c",
         "src/addon.cc"
       ],
       "include_dirs": [
-        "<(sse_dir)",
+        "vendor",
         "<!@(node -p \"require('node-addon-api').include\")"
       ],
       "defines": [
