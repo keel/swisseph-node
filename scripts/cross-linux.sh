@@ -23,12 +23,14 @@ case "$ARCH" in
 esac
 
 # --- node headers ---
-HDR="build/node-headers/$NODE_VER"
+# headers tarball extracts as node-v<ver>/
+HDR="build/node-headers/node-v$NODE_VER"
 if [ ! -f "$HDR/include/node/node_api.h" ]; then
   mkdir -p "build/node-headers"
   curl -fsSL "https://nodejs.org/download/release/v$NODE_VER/node-v$NODE_VER-headers.tar.gz" \
     | tar -xz -C "build/node-headers"
 fi
+[ -f "$HDR/include/node/node_api.h" ] || { echo "[cross-linux] node headers missing at $HDR"; exit 1; }
 
 INC="-Ivendor -Isrc -Inode_modules/node-addon-api -I$HDR/include/node"
 DEFS="-DNAPI_DISABLE_CPP_EXCEPTIONS -DNAPI_VERSION=8"
