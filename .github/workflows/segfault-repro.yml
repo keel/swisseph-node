@@ -64,6 +64,50 @@ jobs:
       - name: Run fresh-process loop (${{ matrix.node }})
         run: cd t && ./loop.sh "${{ github.event.inputs.iterations || '300' }}"
 
+  scf-sim:
+    # 最贴近 EdgeOne SCF 的复现：老 glibc 容器（manylinux_2_28, glibc 2.28）
+    # + 腾讯 node20 同源二进制 + esbuild 单文件 bundle（无 node_modules、b64 路径）
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/pypa/manylinux_2_28_x86_64
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.3'
+      - name: Build single-file bundle like EdgeOne
+        run: |
+          mkdir -p t && cd t
+          npm init -y >/dev/null
+          npm install swisseph-node@1.0.1 express esbuild --ignore-scripts --cache /tmp/npm-cache
+          rm -rf node_modules/swisseph-node/prebuilds
+          cat > app.cjs <<'EOF'
+          const swe = require('swisseph-node');
+          const os = require('os'), fs = require('fs'), path = require('path');
+          const dir = path.join(os.tmpdir(), 'ephe-probe');
+          fs.mkdirSync(dir, { recursive: true });
+          swe.setEphePath(dir);
+          const c = swe.computeChart({ year: 2000, month: 1, day: 1, hour: 20, tz: 8, lat: 39.9, lon: 116.4 });
+          const sun = c.planets.find(p => p.key === 'sun');
+          if (Math.abs(sun.lon - 280.3689186) > 0.01) { console.error('BAD VALUE'); process.exit(2); }
+          console.log('ok planets=' + c.planets.length);
+          EOF
+          npx esbuild app.cjs --bundle --platform=node --format=cjs --outfile=index.cjs
+          rm -rf node_modules
+          cat > loop.sh <<'EOF'
+          #!/bin/bash
+          n=$1; segv=0; bad=0
+          for i in $(seq 1 "$n"); do
+            out=$(node index.cjs 2>&1); rc=$?
+            if [ $rc -ge 128 ]; then segv=$((segv+1)); echo "ITER $i CRASH rc=$rc"; fi
+            if [ $rc -ne 0 ] && [ $rc -lt 128 ]; then bad=$((bad+1)); echo "ITER $i rc=$rc: $out"; fi
+          done
+          echo "RESULT glibc=$(ldd --version | head -1) iters=$n segv=$segv other=$bad"
+          exit $((segv+bad))
+          EOF
+          chmod +x loop.sh
+      - name: Run bundled fresh-process loop
+        run: cd t && ./loop.sh 300
+
   warm-loop:
     # 对照组：单进程内连续 2000 次计算（排除并发/重复调用因素）
     runs-on: ubuntu-latest
