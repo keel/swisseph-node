@@ -53,8 +53,8 @@ jobs:
         with:
           version: 0.13.0
       - run: npm ci || npm install
-      - run: scripts/cross-linux.sh zig x64
-      - run: scripts/cross-linux.sh zig arm64
+      - run: bash scripts/cross-linux.sh zig x64
+      - run: bash scripts/cross-linux.sh zig arm64
       - name: Upload real payload only
         uses: actions/upload-artifact@v4
         with:
