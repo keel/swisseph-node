@@ -1,0 +1,82 @@
+name: segfault-repro
+
+# 复现 EdgeOne Cloud Functions (SCF node20) 上的间歇性 SIGSEGV：
+# 每次迭代拉起全新 node 进程，模拟平台反复冷启动；走 b64 内嵌路径
+# （删除 prebuilds，与 esbuild 单文件 bundle 环境一致）加载原生模块并计算。
+#
+# 手动触发: workflow_dispatch，输入 iterations（默认 300）。
+on:
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: 'fresh-process iterations'
+        default: '300'
+        required: false
+
+jobs:
+  repro:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20.19.3', '22', '24']
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install published package
+        run: |
+          mkdir -p t && cd t
+          npm init -y >/dev/null
+          npm install swisseph-node@1.0.1 --ignore-scripts --cache /tmp/npm-cache
+          # 与 EdgeOne esbuild bundle 环境一致：无 prebuilds、无 build/，只留 b64 路径
+          rm -rf node_modules/swisseph-node/prebuilds
+      - name: Write probe
+        run: |
+          cd t
+          cat > probe.cjs <<'EOF'
+          // 单次冷启动探针：b64 路径加载 + 基准计算，exit 0 = ok
+          const swe = require('swisseph-node');
+          const os = require('os'), fs = require('fs'), path = require('path');
+          const dir = path.join(os.tmpdir(), 'ephe-probe');
+          fs.mkdirSync(dir, { recursive: true });
+          swe.setEphePath(dir); // 无星历文件 → Moshier 回退，凯龙不可用属预期
+          const c = swe.computeChart({ year: 2000, month: 1, day: 1, hour: 20, tz: 8, lat: 39.9, lon: 116.4 });
+          const sun = c.planets.find(p => p.key === 'sun');
+          if (Math.abs(sun.lon - 280.3689186) > 0.01) { console.error('BAD VALUE', sun.lon); process.exit(2); }
+          console.log('ok planets=' + c.planets.length);
+          EOF
+          cat > loop.sh <<'EOF'
+          #!/bin/bash
+          n=$1; segv=0; bad=0
+          for i in $(seq 1 "$n"); do
+            out=$(node probe.cjs 2>&1); rc=$?
+            if [ $rc -ge 128 ]; then segv=$((segv+1)); echo "ITER $i CRASH rc=$rc: $out" | tail -2;
+            elif [ $rc -ne 0 ]; then bad=$((bad+1)); echo "ITER $i rc=$rc: $out"; fi
+          done
+          echo "RESULT node=$(node -v) iters=$n segv=$segv other=$bad"
+          exit $((segv+bad))
+          EOF
+          chmod +x loop.sh
+      - name: Run fresh-process loop (${{ matrix.node }})
+        run: cd t && ./loop.sh "${{ github.event.inputs.iterations || '300' }}"
+
+  warm-loop:
+    # 对照组：单进程内连续 2000 次计算（排除并发/重复调用因素）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.3'
+      - run: |
+          mkdir -p t && cd t && npm init -y >/dev/null
+          npm install swisseph-node@1.0.1 --ignore-scripts --cache /tmp/npm-cache
+          rm -rf node_modules/swisseph-node/prebuilds
+          node -e "
+          const swe = require('swisseph-node');
+          for (let i = 0; i < 2000; i++) {
+            const c = swe.computeChart({ year: 2000, month: 1, day: 1, hour: 20, tz: 8, lat: 39.9, lon: 116.4 });
+            if (i % 500 === 0) console.log('iter', i, 'ok');
+          }
+          console.log('WARM LOOP DONE');
+          "
