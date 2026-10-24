@@ -1,0 +1,19 @@
+{
+  "name": "swisseph-node",
+  "version": "1.0.0",
+  "description": "Modern N-API binding for Swiss Ephemeris, compiles upstream sources unmodified",
+  "main": "index.js",
+  "types": "types/index.d.ts",
+  "license": "AGPL-3.0",
+  "keywords": ["swiss", "ephemeris", "astrology", "astronomy", "n-api"],
+  "engines": { "node": ">=16" },
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "build": "node-gyp rebuild",
+    "test": "node test/index.js"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.0.0"
+  },
+  "gypfile": true
+}
