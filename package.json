@@ -9,8 +9,10 @@
   "engines": { "node": ">=16" },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-name/swisseph-node.git"
+    "url": "git+https://github.com/keel/swisseph-node.git"
   },
+  "bugs": { "url": "https://github.com/keel/swisseph-node/issues" },
+  "homepage": "https://github.com/keel/swisseph-node#readme",
   "files": [
     "index.js",
     "lib/",
