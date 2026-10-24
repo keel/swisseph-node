@@ -6,15 +6,13 @@ on:
     tags: ['v*']
 
 jobs:
-  prebuild:
+  prebuild-mac:
     strategy:
       matrix:
         include:
-          - { os: ubuntu-latest,    plat: linux-x64 }
-          - { os: ubuntu-24.04-arm, plat: linux-arm64 }
+          - { os: macos-latest, plat: darwin-arm64 }
           # macos-13 (x64 runner) 已退役：darwin-x64 在 arm64 mac 上交叉编译
-          - { os: macos-latest,     plat: darwin-arm64 }
-          - { os: macos-latest,     plat: darwin-x64, cross_arch: x64 }
+          - { os: macos-latest, plat: darwin-x64, cross_arch: x64 }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -41,8 +39,33 @@ jobs:
             lib/b64/${{ matrix.plat }}.js
           if-no-files-found: error
 
+  prebuild-linux:
+    # zig 交叉编译，glibc 钉在 2.17：ubuntu-latest(glibc 2.39) 产物在 EdgeOne SCF
+    # 等老 glibc 运行时上 dlopen 失败（GLIBC_2.38 not found）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: mlugg/setup-zig@v1
+        with:
+          version: 0.13.0
+      - run: npm ci || npm install
+      - run: scripts/cross-linux.sh zig x64
+      - run: scripts/cross-linux.sh zig arm64
+      - name: Upload real payload only
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuild-linux
+          path: |
+            prebuilds/
+            lib/b64/
+          if-no-files-found: error
+
   publish:
-    needs: prebuild
+    needs: [prebuild-mac, prebuild-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -58,8 +81,8 @@ jobs:
         run: |
           mkdir -p prebuilds lib/b64
           for d in art/prebuild-*; do
-            cp -r "$d"/prebuilds/* prebuilds/
-            cp -r "$d"/lib/b64/* lib/b64/
+            if [ -d "$d/prebuilds" ]; then cp -r "$d"/prebuilds/* prebuilds/; fi
+            if [ -d "$d/lib/b64" ]; then cp -r "$d"/lib/b64/* lib/b64/; fi
           done
           ls -R prebuilds lib/b64
       - name: Fill placeholders for any missing platform

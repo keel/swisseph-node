@@ -1,6 +1,6 @@
 {
   "name": "swisseph-node",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Modern N-API binding for Swiss Ephemeris — self-contained (vendored C sources), ships prebuilt binaries, bundle-friendly (base64-embedded fallback for serverless/bundler-only runtimes)",
   "main": "index.js",
   "types": "types/index.d.ts",
