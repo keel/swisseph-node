@@ -12,8 +12,9 @@ jobs:
         include:
           - { os: ubuntu-latest,    plat: linux-x64 }
           - { os: ubuntu-24.04-arm, plat: linux-arm64 }
-          - { os: macos-13,         plat: darwin-x64 }
+          # macos-13 (x64 runner) 已退役：darwin-x64 在 arm64 mac 上交叉编译
           - { os: macos-latest,     plat: darwin-arm64 }
+          - { os: macos-latest,     plat: darwin-x64, cross_arch: x64 }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +23,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci || npm install
-      - run: npm run prebuild
+      - name: prebuild (native)
+        if: matrix.cross_arch != 'x64'
+        run: npm run prebuild
+      - name: prebuild (cross-compile x86_64)
+        if: matrix.cross_arch == 'x64'
+        env:
+          ARCHFLAGS: "-arch x86_64"
+        run: npm run prebuild -- --arch x64
       - run: npm run gen-b64
       - name: Upload real payload only
         uses: actions/upload-artifact@v4
